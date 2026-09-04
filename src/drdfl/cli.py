@@ -97,10 +97,57 @@ def _parser() -> argparse.ArgumentParser:
 def _load_research_config(path: Path | None) -> ResearchConfig:
     if path is None:
         return ResearchConfig()
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
+    raw_payload: object = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw_payload, dict):
         raise ValueError("research config must contain a JSON object")
-    return ResearchConfig(**cast(dict[str, object], payload))
+    payload = cast(dict[str, object], raw_payload)
+    defaults = ResearchConfig()
+    allowed = {
+        "layer_count",
+        "width",
+        "context_dim",
+        "train_samples",
+        "validation_samples",
+        "evaluation_samples",
+        "hidden_dim",
+        "hidden_layers",
+        "epochs",
+        "warm_start_epochs",
+        "kl_radius",
+        "bootstrap_draws",
+        "seed",
+    }
+    unknown = set(payload) - allowed
+    if unknown:
+        raise ValueError(f"unknown research config fields: {sorted(unknown)}")
+
+    def integer(name: str, default: int) -> int:
+        value = payload.get(name, default)
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValueError(f"research config field {name!r} must be an integer")
+        return value
+
+    def number(name: str, default: float) -> float:
+        value = payload.get(name, default)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"research config field {name!r} must be numeric")
+        return float(value)
+
+    return ResearchConfig(
+        layer_count=integer("layer_count", defaults.layer_count),
+        width=integer("width", defaults.width),
+        context_dim=integer("context_dim", defaults.context_dim),
+        train_samples=integer("train_samples", defaults.train_samples),
+        validation_samples=integer("validation_samples", defaults.validation_samples),
+        evaluation_samples=integer("evaluation_samples", defaults.evaluation_samples),
+        hidden_dim=integer("hidden_dim", defaults.hidden_dim),
+        hidden_layers=integer("hidden_layers", defaults.hidden_layers),
+        epochs=integer("epochs", defaults.epochs),
+        warm_start_epochs=integer("warm_start_epochs", defaults.warm_start_epochs),
+        kl_radius=number("kl_radius", defaults.kl_radius),
+        bootstrap_draws=integer("bootstrap_draws", defaults.bootstrap_draws),
+        seed=integer("seed", defaults.seed),
+    )
 
 
 def _parse_checkpoints(items: list[str]) -> dict[str, CostPredictor]:
@@ -190,7 +237,7 @@ def _run(args: argparse.Namespace) -> dict[str, object]:
                 hidden_layers=args.hidden_layers,
             )
         )
-        config = TrainingConfig(
+        training_config = TrainingConfig(
             mode=args.mode,
             epochs=args.epochs,
             warm_start_epochs=args.warm_start_epochs,
@@ -198,7 +245,7 @@ def _run(args: argparse.Namespace) -> dict[str, object]:
             kl_radius=args.kl_radius,
             seed=args.seed,
         )
-        summary = train_model(model, dataset, validation, config=config)
+        summary = train_model(model, dataset, validation, config=training_config)
         save_checkpoint(
             model,
             args.checkpoint,
@@ -208,7 +255,7 @@ def _run(args: argparse.Namespace) -> dict[str, object]:
                 "graph_fingerprint": dataset.graph.fingerprint,
                 "train_fingerprint": dataset.fingerprint,
                 "validation_fingerprint": validation.fingerprint,
-                "training_config": asdict(config),
+                "training_config": asdict(training_config),
             },
         )
         payload = {"checkpoint": str(args.checkpoint), **summary.to_dict()}
@@ -220,7 +267,7 @@ def _run(args: argparse.Namespace) -> dict[str, object]:
         dataset = load_dataset(args.dataset)
         train_dataset = load_dataset(args.train_dataset)
         models = _parse_checkpoints(args.checkpoint)
-        report = evaluate_models(
+        evaluation_report = evaluate_models(
             models,
             train_dataset,
             dataset,
@@ -229,19 +276,19 @@ def _run(args: argparse.Namespace) -> dict[str, object]:
             bootstrap_seed=args.seed,
             bootstrap_draws=args.bootstrap_draws,
         )
-        save_report_json(report, args.output_json)
+        save_report_json(evaluation_report, args.output_json)
         if args.output_csv is not None:
-            save_report_csv(report, args.output_csv)
-        return report.to_dict()
+            save_report_csv(evaluation_report, args.output_csv)
+        return evaluation_report.to_dict()
 
     if args.command == "research":
-        config = _load_research_config(args.config)
-        _models, report = run_research_experiment(
-            config,
+        research_config = _load_research_config(args.config)
+        _models, research_report = run_research_experiment(
+            research_config,
             checkpoint_directory=args.checkpoint_directory,
         )
-        save_research_report(report, args.output_report)
-        return report.to_dict()
+        save_research_report(research_report, args.output_report)
+        return research_report.to_dict()
 
     raise RuntimeError("unreachable command")
 

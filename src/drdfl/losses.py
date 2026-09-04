@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -14,8 +15,8 @@ from drdfl.domain import LayeredGraph
 
 class _SPOPlus(Function):
     @staticmethod
-    def forward(  # type: ignore[override]
-        ctx: object,
+    def forward(
+        ctx: Any,
         predicted_costs: Tensor,
         true_costs: Tensor,
         true_decisions: Tensor,
@@ -50,15 +51,15 @@ class _SPOPlus(Function):
                 raise RuntimeError("SPO+ oracle produced a materially negative surrogate")
             losses[index] = torch.clamp(loss, min=0.0)
             gradients[index] = 2.0 * difference
-        ctx.save_for_backward(gradients)  # type: ignore[attr-defined]
+        ctx.save_for_backward(gradients)
         return losses
 
     @staticmethod
-    def backward(  # type: ignore[override]
-        ctx: object,
+    def backward(
+        ctx: Any,
         grad_output: Tensor,
     ) -> tuple[Tensor, None, None, None]:
-        (gradients,) = ctx.saved_tensors  # type: ignore[attr-defined]
+        gradients = cast(Tensor, ctx.saved_tensors[0])
         return grad_output.unsqueeze(-1) * gradients, None, None, None
 
 
@@ -70,7 +71,7 @@ def spo_plus_losses(
 ) -> Tensor:
     """Compute one SPO+ surrogate value per contextual observation."""
 
-    return _SPOPlus.apply(predicted_costs, true_costs, true_decisions, graph)
+    return cast(Tensor, _SPOPlus.apply(predicted_costs, true_costs, true_decisions, graph))
 
 
 def prediction_losses(predicted_costs: Tensor, true_costs: Tensor) -> Tensor:

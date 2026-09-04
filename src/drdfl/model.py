@@ -33,6 +33,13 @@ class PredictorConfig:
 class CostPredictor(nn.Module):
     """A compact nonlinear predictor shared by all training objectives."""
 
+    network: nn.Sequential
+    context_mean: Tensor
+    context_scale: Tensor
+    cost_mean: Tensor
+    cost_scale: Tensor
+    normalizer_fitted: Tensor
+
     def __init__(self, config: PredictorConfig) -> None:
         super().__init__()
         self.config = config
@@ -80,7 +87,7 @@ class CostPredictor(nn.Module):
         if not bool(self.normalizer_fitted):
             raise RuntimeError("predictor normalizers must be fitted before use")
         normalized = (contexts - self.context_mean) / self.context_scale
-        prediction = self.network(normalized)
+        prediction = cast(Tensor, self.network(normalized))
         costs = prediction * self.cost_scale + self.cost_mean
         if not torch.all(torch.isfinite(costs)):
             raise RuntimeError("predictor produced non-finite edge costs")
@@ -120,7 +127,10 @@ def load_checkpoint(
     source = Path(path)
     with safe_open(str(source), framework="pt", device="cpu") as handle:
         header = handle.metadata()
-        tensors = {key: handle.get_tensor(key) for key in handle}
+        tensors = {
+            key: handle.get_tensor(key)
+            for key in handle.keys()  # noqa: SIM118
+        }
     if header is None:
         raise ValueError("checkpoint metadata is missing")
     if header.get("checkpoint_schema_version") != CHECKPOINT_SCHEMA_VERSION:

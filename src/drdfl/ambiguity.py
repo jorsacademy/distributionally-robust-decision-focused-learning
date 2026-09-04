@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import asdict, dataclass
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -179,8 +180,8 @@ def solve_kl_adversary(
 
 class _KLDROAggregate(Function):
     @staticmethod
-    def forward(  # type: ignore[override]
-        ctx: object,
+    def forward(
+        ctx: Any,
         losses: Tensor,
         radius: float,
     ) -> Tensor:
@@ -188,22 +189,22 @@ class _KLDROAggregate(Function):
             raise ValueError("KL-DRO aggregation expects a one-dimensional loss tensor")
         result = solve_kl_adversary(losses.detach().cpu().double().numpy(), radius)
         weights = torch.tensor(result.weights, dtype=losses.dtype, device=losses.device)
-        ctx.save_for_backward(weights)  # type: ignore[attr-defined]
+        ctx.save_for_backward(weights)
         return torch.dot(losses, weights)
 
     @staticmethod
-    def backward(  # type: ignore[override]
-        ctx: object,
+    def backward(
+        ctx: Any,
         grad_output: Tensor,
     ) -> tuple[Tensor, None]:
-        (weights,) = ctx.saved_tensors  # type: ignore[attr-defined]
+        weights = cast(Tensor, ctx.saved_tensors[0])
         return grad_output * weights, None
 
 
 def kl_dro_aggregate(losses: Tensor, radius: float) -> Tensor:
     """Return the exact KL-robust empirical risk with a Danskin gradient."""
 
-    return _KLDROAggregate.apply(losses, radius)
+    return cast(Tensor, _KLDROAggregate.apply(losses, radius))
 
 
 def ambiguity_profile(

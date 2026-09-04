@@ -21,7 +21,7 @@ class RidgePredictor:
             raise ValueError("context matrix has the wrong shape")
         standardized = (values - self.context_mean) / self.context_scale
         design = np.column_stack([np.ones(values.shape[0]), standardized])
-        predictions = design @ self.coefficients
+        predictions: np.ndarray = np.asarray(design @ self.coefficients, dtype=float)
         if not np.all(np.isfinite(predictions)):
             raise RuntimeError("ridge baseline produced non-finite predictions")
         return predictions
