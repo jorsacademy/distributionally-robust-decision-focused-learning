@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "distributionally-robust-decision-focused-learning"
+version = "0.1.0"
+description = "Verification-first KL-DRO decision-focused learning for contextual shortest paths"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "PolyForm-Noncommercial-1.0.0" }
+authors = [{ name = "Jors Academy" }]
+keywords = [
+  "operations research",
+  "decision-focused learning",
+  "distributionally robust optimization",
+  "predict-then-optimize",
+  "shortest path",
+  "machine learning",
+]
+dependencies = [
+  "numpy>=1.26,<3",
+  "safetensors>=0.4,<1",
+  "scipy>=1.13,<2",
+  "torch>=2.2,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=1.11,<2",
+  "pytest>=8,<10",
+  "pytest-cov>=5,<8",
+  "ruff>=0.6,<1",
+  "scipy-stubs>=1.13,<2",
+]
+
+[project.scripts]
+drdfl = "drdfl.cli:main"
+
+[project.urls]
+Repository = "https://github.com/jorsacademy/distributionally-robust-decision-focused-learning"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+show_error_codes = true
+pretty = true
+packages = ["drdfl"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+  "--strict-config",
+  "--strict-markers",
+  "--cov=drdfl",
+  "--cov-branch",
+  "--cov-report=term-missing",
+  "--cov-fail-under=84",
+]

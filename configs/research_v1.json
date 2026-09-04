@@ -1,0 +1,15 @@
+{
+  "bootstrap_draws": 500,
+  "context_dim": 8,
+  "epochs": 100,
+  "evaluation_samples": 48,
+  "hidden_dim": 96,
+  "hidden_layers": 2,
+  "kl_radius": 0.15,
+  "layer_count": 4,
+  "seed": 2026,
+  "train_samples": 128,
+  "validation_samples": 40,
+  "warm_start_epochs": 20,
+  "width": 4
+}

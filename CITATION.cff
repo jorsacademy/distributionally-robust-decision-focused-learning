@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+title: Distributionally Robust Decision-Focused Learning
+authors:
+  - family-names: Jors Academy
+version: 0.1.0
+date-released: 2026-09-04
+license: PolyForm-Noncommercial-1.0.0
+repository-code: https://github.com/jorsacademy/distributionally-robust-decision-focused-learning
+message: Cite this repository and the primary methodological references listed in the README.
