@@ -13,7 +13,7 @@ from drdfl.dataset import collect_dataset, load_dataset, save_dataset
 from drdfl.domain import LayeredGraph
 from drdfl.evaluation import evaluate_models, save_report_csv, save_report_json
 from drdfl.experiment import ResearchConfig, run_research_experiment, save_research_report
-from drdfl.generator import ContextualCostGenerator, GeneratorSpec, SUPPORTED_REGIMES
+from drdfl.generator import SUPPORTED_REGIMES, ContextualCostGenerator, GeneratorSpec
 from drdfl.model import CostPredictor, PredictorConfig, load_checkpoint, save_checkpoint
 from drdfl.oracle import verify_shortest_path_by_enumeration
 from drdfl.training import SUPPORTED_MODES, TrainingConfig, train_model
@@ -41,7 +41,9 @@ def _parser() -> argparse.ArgumentParser:
     collect.add_argument("--layers", type=int, default=4)
     collect.add_argument("--width", type=int, default=4)
     collect.add_argument("--context-dim", type=int, default=8)
-    collect.add_argument("--regimes", nargs="+", choices=SUPPORTED_REGIMES, default=["in_distribution"])
+    collect.add_argument(
+        "--regimes", nargs="+", choices=SUPPORTED_REGIMES, default=["in_distribution"]
+    )
     collect.add_argument("--seed", type=int, default=1000)
     collect.add_argument("--structure-seed", type=int, default=2026)
     collect.add_argument("--output", type=Path, required=True)
@@ -66,7 +68,9 @@ def _parser() -> argparse.ArgumentParser:
     train.add_argument("--checkpoint", type=Path, required=True)
     train.add_argument("--output-report", type=Path)
 
-    benchmark = subparsers.add_parser("benchmark", help="evaluate checkpoints against exact path regret")
+    benchmark = subparsers.add_parser(
+        "benchmark", help="evaluate checkpoints against exact path regret"
+    )
     benchmark.add_argument("dataset", type=Path)
     benchmark.add_argument("--train-dataset", type=Path, required=True)
     benchmark.add_argument(
@@ -249,7 +253,7 @@ def main(argv: list[str] | None = None) -> int:
         payload = _run(args)
         print(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False))
         return 0
-    except Exception as error:  # noqa: BLE001 - CLI converts failures to structured output
+    except Exception as error:
         print(
             json.dumps(
                 {"error": type(error).__name__, "message": str(error)},

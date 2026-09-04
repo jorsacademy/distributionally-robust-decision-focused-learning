@@ -81,7 +81,9 @@ def _bootstrap_mean_interval(
     return float(np.quantile(means, 0.025)), float(np.quantile(means, 0.975))
 
 
-def _path_signatures(dataset: ContextualDataset, predictions: np.ndarray) -> tuple[tuple[int, ...], ...]:
+def _path_signatures(
+    dataset: ContextualDataset, predictions: np.ndarray
+) -> tuple[tuple[int, ...], ...]:
     signatures: list[tuple[int, ...]] = []
     for row in predictions:
         signatures.append(dataset.graph.shortest_path(row).edge_indices)

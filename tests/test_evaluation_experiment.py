@@ -8,7 +8,9 @@ from drdfl.model import CostPredictor, PredictorConfig
 from drdfl.training import TrainingConfig, train_model
 
 
-def test_evaluation_reports_oracles_and_ambiguity(tiny_train, tiny_validation, tmp_path: Path) -> None:
+def test_evaluation_reports_oracles_and_ambiguity(
+    tiny_train, tiny_validation, tmp_path: Path
+) -> None:
     model = CostPredictor(
         PredictorConfig(tiny_train.context_dim, tiny_train.graph.edge_count, 12, 1)
     )

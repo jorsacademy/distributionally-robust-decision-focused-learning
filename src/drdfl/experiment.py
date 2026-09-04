@@ -67,7 +67,9 @@ class ResearchReport:
         }
 
 
-def _training_datasets(config: ResearchConfig, graph: LayeredGraph) -> tuple[ContextualDataset, ContextualDataset]:
+def _training_datasets(
+    config: ResearchConfig, graph: LayeredGraph
+) -> tuple[ContextualDataset, ContextualDataset]:
     training = collect_dataset(
         graph,
         count=config.train_samples,

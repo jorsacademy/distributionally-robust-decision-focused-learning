@@ -111,10 +111,7 @@ class TrainingSummary:
 
 
 def _clone_state(model: CostPredictor) -> dict[str, Tensor]:
-    return {
-        key: value.detach().cpu().clone()
-        for key, value in model.state_dict().items()
-    }
+    return {key: value.detach().cpu().clone() for key, value in model.state_dict().items()}
 
 
 def _validation_metrics(
@@ -179,9 +176,7 @@ def _run_epoch(
         raise RuntimeError("training objective became non-finite")
     optimizer.zero_grad(set_to_none=True)
     torch.autograd.backward(objective)
-    gradient_norm = float(
-        torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clip_norm)
-    )
+    gradient_norm = float(torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clip_norm))
     if not math.isfinite(gradient_norm):
         raise RuntimeError("gradient norm became non-finite")
     optimizer.step()
@@ -266,9 +261,7 @@ def train_model(
     epochs_completed = 0
     for epoch in range(1, config.epochs + 1):
         if config.mode.endswith("kl_dro") and config.radius_warmup_epochs > 0:
-            active_radius = config.kl_radius * min(
-                1.0, epoch / float(config.radius_warmup_epochs)
-            )
+            active_radius = config.kl_radius * min(1.0, epoch / float(config.radius_warmup_epochs))
         else:
             active_radius = config.kl_radius if config.mode.endswith("kl_dro") else 0.0
         metrics = _run_epoch(

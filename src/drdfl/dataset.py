@@ -13,7 +13,7 @@ import torch
 from torch import Tensor
 
 from drdfl.domain import LayeredGraph
-from drdfl.generator import CostRegime, ContextualCostGenerator, GeneratorSpec
+from drdfl.generator import ContextualCostGenerator, CostRegime, GeneratorSpec
 
 CORPUS_SCHEMA_VERSION = "1.0"
 

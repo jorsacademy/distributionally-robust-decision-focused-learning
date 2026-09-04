@@ -108,10 +108,7 @@ def save_checkpoint(
         "model_config": json.dumps(asdict(model.config), sort_keys=True),
         "metadata": json.dumps(metadata or {}, sort_keys=True),
     }
-    tensors = {
-        key: value.detach().cpu().contiguous()
-        for key, value in model.state_dict().items()
-    }
+    tensors = {key: value.detach().cpu().contiguous() for key, value in model.state_dict().items()}
     save_file(tensors, str(output), metadata=header)
 
 
@@ -123,7 +120,7 @@ def load_checkpoint(
     source = Path(path)
     with safe_open(str(source), framework="pt", device="cpu") as handle:
         header = handle.metadata()
-        tensors = {key: handle.get_tensor(key) for key in handle.keys()}
+        tensors = {key: handle.get_tensor(key) for key in handle}
     if header is None:
         raise ValueError("checkpoint metadata is missing")
     if header.get("checkpoint_schema_version") != CHECKPOINT_SCHEMA_VERSION:

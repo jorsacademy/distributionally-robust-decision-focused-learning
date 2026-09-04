@@ -114,7 +114,9 @@ def solve_kl_adversary(
     if radius >= concentration_radius - tolerance:
         weights = np.zeros_like(probabilities)
         weights[maximizers] = probabilities[maximizers] / maximum_mass
-        divergence = float(np.dot(weights[maximizers], np.log(weights[maximizers] / probabilities[maximizers])))
+        divergence = float(
+            np.dot(weights[maximizers], np.log(weights[maximizers] / probabilities[maximizers]))
+        )
         entropy = float(-np.dot(weights[maximizers], np.log(weights[maximizers])))
         return KLDROResult(
             value=maximum_loss,

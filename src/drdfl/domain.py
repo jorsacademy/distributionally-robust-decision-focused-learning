@@ -100,9 +100,7 @@ class LayeredGraph:
 
     @property
     def fingerprint(self) -> str:
-        payload = json.dumps(
-            self.to_dict(), sort_keys=True, separators=(",", ":")
-        ).encode("utf-8")
+        payload = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":")).encode("utf-8")
         return hashlib.sha256(payload).hexdigest()
 
     @property
@@ -148,7 +146,9 @@ class LayeredGraph:
                 incumbent = float(distance[edge.head])
                 if candidate < incumbent - 1e-12 or (
                     abs(candidate - incumbent) <= 1e-12
-                    and (predecessor_edge[edge.head] < 0 or edge_index < predecessor_edge[edge.head])
+                    and (
+                        predecessor_edge[edge.head] < 0 or edge_index < predecessor_edge[edge.head]
+                    )
                 ):
                     distance[edge.head] = candidate
                     predecessor_edge[edge.head] = edge_index

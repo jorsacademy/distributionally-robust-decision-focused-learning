@@ -98,7 +98,9 @@ class ContextualCostGenerator:
             return 1.15 * standard + offset
         return standard
 
-    def generate(self, *, regime: CostRegime = "in_distribution", seed: int) -> GeneratedObservation:
+    def generate(
+        self, *, regime: CostRegime = "in_distribution", seed: int
+    ) -> GeneratedObservation:
         if regime not in SUPPORTED_REGIMES:
             raise ValueError(f"unsupported cost regime: {regime}")
         rng = np.random.default_rng(seed)
