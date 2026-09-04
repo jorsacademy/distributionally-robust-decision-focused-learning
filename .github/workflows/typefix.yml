@@ -1,0 +1,219 @@
+name: One-time strict typing cleanup
+
+on:
+  push:
+    branches: [wasserstein-dfl-implementation]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out feature branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: wasserstein-dfl-implementation
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Install typing and quality dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2,<3"
+          python -m pip install -e ".[dev]"
+
+      - name: Apply strict typing fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text(encoding="utf-8")
+              if old not in text:
+                  raise RuntimeError(f"expected text not found in {path}: {old[:80]!r}")
+              target.write_text(text.replace(old, new), encoding="utf-8")
+
+          replace(
+              "src/drdfl/losses.py",
+              "import math\n\nimport numpy",
+              "import math\nfrom typing import Any, cast\n\nimport numpy",
+          )
+          replace(
+              "src/drdfl/losses.py",
+              "def forward(  # type: ignore[override]\n        ctx: object,",
+              "def forward(\n        ctx: Any,",
+          )
+          replace(
+              "src/drdfl/losses.py",
+              "ctx.save_for_backward(gradients)  # type: ignore[attr-defined]",
+              "ctx.save_for_backward(gradients)",
+          )
+          replace(
+              "src/drdfl/losses.py",
+              "def backward(  # type: ignore[override]\n        ctx: object,",
+              "def backward(\n        ctx: Any,",
+          )
+          replace(
+              "src/drdfl/losses.py",
+              "(gradients,) = ctx.saved_tensors  # type: ignore[attr-defined]",
+              "gradients = cast(Tensor, ctx.saved_tensors[0])",
+          )
+          replace(
+              "src/drdfl/losses.py",
+              "return _SPOPlus.apply(predicted_costs, true_costs, true_decisions, graph)",
+              "return cast(Tensor, _SPOPlus.apply(predicted_costs, true_costs, true_decisions, graph))",
+          )
+
+          replace(
+              "src/drdfl/ambiguity.py",
+              "import math\nfrom dataclasses import asdict, dataclass\n",
+              "import math\nfrom dataclasses import asdict, dataclass\nfrom typing import Any, cast\n",
+          )
+          replace(
+              "src/drdfl/ambiguity.py",
+              "def forward(  # type: ignore[override]\n        ctx: object,",
+              "def forward(\n        ctx: Any,",
+          )
+          replace(
+              "src/drdfl/ambiguity.py",
+              "ctx.save_for_backward(weights)  # type: ignore[attr-defined]",
+              "ctx.save_for_backward(weights)",
+          )
+          replace(
+              "src/drdfl/ambiguity.py",
+              "def backward(  # type: ignore[override]\n        ctx: object,",
+              "def backward(\n        ctx: Any,",
+          )
+          replace(
+              "src/drdfl/ambiguity.py",
+              "(weights,) = ctx.saved_tensors  # type: ignore[attr-defined]",
+              "weights = cast(Tensor, ctx.saved_tensors[0])",
+          )
+          replace(
+              "src/drdfl/ambiguity.py",
+              "return _KLDROAggregate.apply(losses, radius)",
+              "return cast(Tensor, _KLDROAggregate.apply(losses, radius))",
+          )
+
+          replace(
+              "src/drdfl/model.py",
+              "class CostPredictor(nn.Module):\n    \"\"\"A compact nonlinear predictor shared by all training objectives.\"\"\"\n\n    def __init__",
+              "class CostPredictor(nn.Module):\n    \"\"\"A compact nonlinear predictor shared by all training objectives.\"\"\"\n\n    network: nn.Sequential\n    context_mean: Tensor\n    context_scale: Tensor\n    cost_mean: Tensor\n    cost_scale: Tensor\n    normalizer_fitted: Tensor\n\n    def __init__",
+          )
+          replace(
+              "src/drdfl/model.py",
+              "prediction = self.network(normalized)",
+              "prediction = cast(Tensor, self.network(normalized))",
+          )
+          replace(
+              "src/drdfl/model.py",
+              "        return costs\n\n\ndef clone_model",
+              "        return cast(Tensor, costs)\n\n\ndef clone_model",
+          )
+
+          replace(
+              "src/drdfl/baselines.py",
+              "predictions = design @ self.coefficients",
+              "predictions: np.ndarray = np.asarray(design @ self.coefficients, dtype=float)",
+          )
+
+          old_loader = '''def _load_research_config(path: Path | None) -> ResearchConfig:
+    if path is None:
+        return ResearchConfig()
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("research config must contain a JSON object")
+    return ResearchConfig(**cast(dict[str, object], payload))
+'''
+          new_loader = '''def _load_research_config(path: Path | None) -> ResearchConfig:
+    if path is None:
+        return ResearchConfig()
+    raw_payload: object = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw_payload, dict):
+        raise ValueError("research config must contain a JSON object")
+    payload = cast(dict[str, object], raw_payload)
+    defaults = ResearchConfig()
+    allowed = {
+        "layer_count",
+        "width",
+        "context_dim",
+        "train_samples",
+        "validation_samples",
+        "evaluation_samples",
+        "hidden_dim",
+        "hidden_layers",
+        "epochs",
+        "warm_start_epochs",
+        "kl_radius",
+        "bootstrap_draws",
+        "seed",
+    }
+    unknown = set(payload) - allowed
+    if unknown:
+        raise ValueError(f"unknown research config fields: {sorted(unknown)}")
+
+    def integer(name: str, default: int) -> int:
+        value = payload.get(name, default)
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValueError(f"research config field {name!r} must be an integer")
+        return value
+
+    def number(name: str, default: float) -> float:
+        value = payload.get(name, default)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"research config field {name!r} must be numeric")
+        return float(value)
+
+    return ResearchConfig(
+        layer_count=integer("layer_count", defaults.layer_count),
+        width=integer("width", defaults.width),
+        context_dim=integer("context_dim", defaults.context_dim),
+        train_samples=integer("train_samples", defaults.train_samples),
+        validation_samples=integer("validation_samples", defaults.validation_samples),
+        evaluation_samples=integer("evaluation_samples", defaults.evaluation_samples),
+        hidden_dim=integer("hidden_dim", defaults.hidden_dim),
+        hidden_layers=integer("hidden_layers", defaults.hidden_layers),
+        epochs=integer("epochs", defaults.epochs),
+        warm_start_epochs=integer("warm_start_epochs", defaults.warm_start_epochs),
+        kl_radius=number("kl_radius", defaults.kl_radius),
+        bootstrap_draws=integer("bootstrap_draws", defaults.bootstrap_draws),
+        seed=integer("seed", defaults.seed),
+    )
+'''
+          replace("src/drdfl/cli.py", old_loader, new_loader)
+          replace("src/drdfl/cli.py", "        config = TrainingConfig(\n", "        training_config = TrainingConfig(\n")
+          replace("src/drdfl/cli.py", "config=config)", "config=training_config)")
+          replace("src/drdfl/cli.py", '"training_config": asdict(config),', '"training_config": asdict(training_config),')
+          replace("src/drdfl/cli.py", "        report = evaluate_models(\n", "        evaluation_report = evaluate_models(\n")
+          replace("src/drdfl/cli.py", "save_report_json(report, args.output_json)", "save_report_json(evaluation_report, args.output_json)")
+          replace("src/drdfl/cli.py", "save_report_csv(report, args.output_csv)", "save_report_csv(evaluation_report, args.output_csv)")
+          replace("src/drdfl/cli.py", "        return report.to_dict()\n\n    if args.command == \"research\":", "        return evaluation_report.to_dict()\n\n    if args.command == \"research\":")
+          replace("src/drdfl/cli.py", "        config = _load_research_config(args.config)\n        _models, report = run_research_experiment(\n            config,", "        research_config = _load_research_config(args.config)\n        _models, research_report = run_research_experiment(\n            research_config,")
+          replace("src/drdfl/cli.py", "save_research_report(report, args.output_report)\n        return report.to_dict()", "save_research_report(research_report, args.output_report)\n        return research_report.to_dict()")
+          PY
+
+      - name: Verify the patched tree
+        run: |
+          ruff check --fix --unsafe-fixes .
+          ruff format .
+          ruff check .
+          ruff format --check .
+          mypy --python-version "3.11" src
+          pytest
+
+      - name: Commit strict typing fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix strict typing boundaries"
+          git push origin HEAD:wasserstein-dfl-implementation
