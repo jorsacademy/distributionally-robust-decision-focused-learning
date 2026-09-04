@@ -54,6 +54,23 @@ jobs:
           PY
           ruff check --fix --unsafe-fixes .
           ruff format .
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/drdfl/model.py")
+          text = path.read_text(encoding="utf-8")
+          old = "        tensors = {key: handle.get_tensor(key) for key in handle}\n"
+          new = (
+              "        tensors = {\n"
+              "            key: handle.get_tensor(key)\n"
+              "            for key in handle.keys()  # noqa: SIM118\n"
+              "        }\n"
+          )
+          if old not in text:
+              raise RuntimeError("the Safetensors key-iteration boundary was not found")
+          path.write_text(text.replace(old, new), encoding="utf-8")
+          PY
+          ruff format .
           ruff check .
           ruff format --check .
           mypy --python-version "3.11" src
@@ -64,5 +81,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Fix strict typing boundaries"
+          git commit -m "Fix strict typing and checkpoint loading"
           git push origin HEAD:wasserstein-dfl-implementation
